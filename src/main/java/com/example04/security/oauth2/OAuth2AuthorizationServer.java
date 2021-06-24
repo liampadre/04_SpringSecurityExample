@@ -53,6 +53,7 @@ public class OAuth2AuthorizationServer extends AuthorizationServerConfigurerAdap
     private static final String IMPLICIT_GRANT_TYPE = "implicit";
     private static final String PASS_GRANT_TYPE = "password";
     private static final String REFRESH_TOKEN_GRANT_TYPE = "refresh_token";
+    private static final String CLIENT_CREDENTIALS = "client_credentials";
 
     @Override
     public void configure(AuthorizationServerSecurityConfigurer security) throws Exception {
@@ -69,7 +70,11 @@ public class OAuth2AuthorizationServer extends AuthorizationServerConfigurerAdap
                 .jdbc(dataSource)
                 .withClient(clientId)
                 .secret(passwordEncoder.encode(clientSecret))
-                .authorizedGrantTypes(PASS_GRANT_TYPE, REFRESH_TOKEN_GRANT_TYPE, IMPLICIT_GRANT_TYPE, CODE_GRANT_TYPE)
+                .authorizedGrantTypes(PASS_GRANT_TYPE,
+                        REFRESH_TOKEN_GRANT_TYPE,
+                        IMPLICIT_GRANT_TYPE,
+                        CODE_GRANT_TYPE,
+                        CLIENT_CREDENTIALS)
                 .authorities("READ_ONLY_CLIENT")
                 .scopes("read","write")
                 .resourceIds("oauth2-resource")
