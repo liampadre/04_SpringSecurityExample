@@ -2,8 +2,11 @@ package com.example04.security;
 
 import lombok.RequiredArgsConstructor;
 
+import javax.sql.DataSource;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -14,10 +17,15 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.provider.authentication.OAuth2AuthenticationManager;
+import org.springframework.security.oauth2.provider.token.DefaultTokenServices;
+import org.springframework.security.oauth2.provider.token.TokenStore;
+import org.springframework.security.oauth2.provider.token.store.JdbcTokenStore;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.example04.security.jwt.JwtAuthorizationFilter;
+import com.example04.service.CustomClientDetailsService;
 import com.example04.service.CustomUserDetailsService;
 
 @Configuration
@@ -31,10 +39,16 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     private final CustomUserDetailsService customUserDetailsService;
 
+    private final CustomClientDetailsService customClientDetailsService;
+
     private final PasswordEncoder passwordEncoder;
 
+//    private final TokenStore tokenStore;
+
+    private final DataSource dataSource;
+
 //    private final AccessDeniedHandler accessDeniedHandler;
-//
+
 //    private final JwtAuthorizationFilter jwtAuthorizationFilter;
 
     @Override
@@ -42,10 +56,34 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         auth.userDetailsService(customUserDetailsService).passwordEncoder(passwordEncoder);
     }
 
-    @Bean
+    @Bean("defaultAuthenticationManager")
+    @Primary
     @Override
     public AuthenticationManager authenticationManagerBean() throws Exception {
         return super.authenticationManagerBean();
+    }
+
+    @Bean("tokenAuthenticationManager")
+    public AuthenticationManager tokenAuthenticationManager() {
+        OAuth2AuthenticationManager manager = new OAuth2AuthenticationManager();
+        manager.setResourceId("oauth2-resource");
+        manager.setTokenServices(tokenServices());
+        manager.setClientDetailsService(customClientDetailsService);
+        return manager;
+    }
+
+    @Bean
+    public DefaultTokenServices tokenServices() {
+        DefaultTokenServices services = new DefaultTokenServices();
+        services.setClientDetailsService(customClientDetailsService);
+        services.setSupportRefreshToken(true);
+        services.setTokenStore(tokenStore());
+        return services;
+    }
+
+    @Bean
+    public TokenStore tokenStore() {
+        return new JdbcTokenStore(dataSource);
     }
 
     @Override

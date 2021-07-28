@@ -53,7 +53,7 @@ En el ejemplo veremos la petición del cliente al servidor de autorización:
 ```
 curl -X POST \
 'http://localhost:8080/oauth/token?grant_type=client_credentials' \
--H 'Authorization: Basic bXljbGllbnQ6MTIzNDU2Nzg5MA=='
+-H 'Authorization: Basic YWRtaW5fY2xpZW50OmFkbWlucGFzcw=='
 ```
 Como se puede ver en ese caso se envía el base64(clientId:secret) en la cabecera Authorization con el grant_type=client_credentials
 y como respuesta directamente obtenemos un access token.
@@ -74,7 +74,7 @@ En el ejemplo veremos (al igual que en el flujo Implicit) la redirección hacia 
 cliente en el navegador, pasándole además una url de callback que el servidor de autorización llamará una vez se 
 haya autenticado el usuario.
 ```
-http://localhost:8080/oauth/authorize?response_type=code&client_id=myclient&redirect_uri=http://localhost:8081/callback.html
+http://localhost:8080/oauth/authorize?response_type=code&client_id=admin_client&redirect_uri=http://localhost:8081/callback.html
 ```
 Luego de que el usuario se autentique nos redirigirá a una pagina para que el mismo pueda aprobar los scopes que esta solicitando 
 el cliente, luego de hacerlo, finalmente los redirigirá a la redirect_url con el code como query param:
@@ -85,7 +85,7 @@ Luego de ello, tenemos que llamar al endpoint para la obtención de token:
 ```
 curl -X POST \
 'http://localhost:8080/oauth/token?grant_type=authorization_code&code=1R2cig&redirect_uri=http://localhost:8081/login.html' \
--H 'Authorization: Basic bXljbGllbnQ6MTIzNDU2Nzg5MA=='
+-H 'Authorization: Basic YWRtaW5fY2xpZW50OmFkbWlucGFzcw=='
 ```
 Obteniendo como resultado final:
 ```
@@ -98,3 +98,94 @@ Obteniendo como resultado final:
     "jti": "430a1511-292d-4e95-8e2e-6471c9749d8f"
 }
 ```
+### Insertar usuarios
+
+Un ejemplo para insertar usuarios es el siguiente, pero como este endpoint si esta protegido es necesario generar un token antes:
+```
+curl -X POST \
+http://localhost:8080/users \
+-H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsib2F1dGgyLXJlc291cmNlIl0sInNjb3BlIjpbInJlYWQiLCJ3cml0ZSIsImV4ZWN1dGUiXSwiZXhwIjoxNjI2MzI4NzI3LCJhdXRob3JpdGllcyI6WyJST0xFX1JFQURfT05MWV9DTElFTlQiLCJST0xFX0FETUlOX0NMSUVOVCJdLCJqdGkiOiIzMmJhYjZjMi0zZGY4LTQ1NjctODM1Ny1kYWVjMTg5Y2FjZjIiLCJjbGllbnRfaWQiOiJhZG1pbl9jbGllbnQifQ._QJXEqq_-kjM9wa_bu1B-0IBhGaZZm51i5fMGZ4K0Hk' \
+-H 'Content-Type: application/json' \
+-d '{
+    "username": "test_user",
+    "password": "testpass",
+    "passwordRepeated": "testpass"
+}'
+```
+
+### Insertar clientes
+
+Un ejemplo de como insertar nuevos clientes es el siguiente:
+```
+curl -X POST \
+http://localhost:8080/clients \
+-H 'Content-Type: application/json' \
+-H 'Postman-Token: 038ba9c1-9a9e-473e-aaac-d1a5410c0ab8' \
+-H 'cache-control: no-cache' \
+-d '{
+    "client_id": "test_client",
+    "client_secret": "adminpass",
+    "name": "Stored client",
+    "description": "Stored client in mongoDB",
+    "grant_types": [
+        "AUTHORIZATION_CODE", "IMPLICIT", "PASSWORD", "REFRESH_TOKEN", "CLIENT_CREDENTIALS"
+    ],
+    "redirect_urls": ["http://localhost:8082/login.html"],
+    "scopes": [
+        "read", "write", "execute"
+    ],
+    "roles": ["READ_ONLY_CLIENT"]
+}'
+```
+
+### Pendientes:
+#### 1. Cual es la diferencia entre un bearer token y un JWT? 
+   
+Los tokens bearer esta relacionados a la "Bearer authentication" tambien llamada autenticacion por token, 
+es un esquema de autenticacion HTTP que involucra a estos tokens. "Bearer authentication" se puede entender 
+como "give access to the bearer of this token". El bearer token es un cadena encriptada, generada por el servidor
+como respuesta a un login. Luego el cliente debe enviar este token en la cabecera Authorization cuando 
+solicita un recurso protegido.
+Este esquema fue creado por OAuth 2.0 en el RFC 6750, de forma similar a la Basic authentication, 
+una Bearer authentication debe ser usada bajo el protocolo HTTPS (SSL).
+JWT (Json Web Token) es un tipo de token, un estandar qué está dentro del documento RFC 7519 y que define una estructura,
+en el mismo se define un mecanismo para poder propagar entre dos partes, y de forma segura, la identidad 
+de un determinado usuario, además con una serie de claims o privilegios. Estos privilegios están 
+codificados en objetos de tipo JSON, que se incrustan dentro del payload o cuerpo de un mensaje y que va 
+firmado digitalmente. Más detalle https://openwebinars.net/blog/que-es-json-web-token-y-como-funciona/
+
+#### 2. Que es la propiedad resourceIds del cliente?
+   
+Los resourcesIds son los IDs de los recursos a los que puede acceder un client, haciendo un simil con Rhino
+nosotros tenemos un conjunto de servicios agrupados por apis, y varias apis puede formar parte de un tenant, entonces
+los ids de estas apis vendrian a encajar conceptualmente con esto. Tambien podemos crear scopes y agruparlos a 
+nivel de api, y asi conectar que scopes tiene habilitados (Los que puede solicitarle al cliente) un cliente 
+para acceder a un determinado recurso o conjunto de recursos (api).
+
+#### 3. Que pasa si, yo usuario, no acepto todos los scopes?
+Si acepto al menos uno de los scopes que me ofrece que acepte, entonces se generará el token y en el payload
+veremos que el atributo "scope" únicamente estarán los que haya aceptado, si en su defecto no acepto ninguno entonces
+no nos devolverá un authorization code sino que nos devolverá la siguiente url:
+```
+http://localhost:8081/callback.html?error=access_denied&error_description=User%20denied%20access
+```
+
+Tambien a raíz de esta pregunta he descubierto que podemos proteger servicios a nivel de scopes así:
+```
+   http
+       ...
+       .authorizeRequests()
+           .antMatchers(HttpMethod.GET, "/employees").access("#oauth2.hasScope('write')")
+       ...
+```
+
+#### 4. Como cambiar el tipo de token que hay que pasarle a spring-security?
+
+XXX
+
+5. Cambiar el ttl del token
+6. Implementar la revocación de tokens?
+7. Personalizar el formulario de login
+8. Customizar el formulario de scopes   
+9. No tenemos un decision manager customizado, lo queremos? Necesitamos mas criterios de validación, no solo los roles.
+10. No tenemos un token filter customizado, lo queremos? Necesitamos tener distintos tipos de tokens.

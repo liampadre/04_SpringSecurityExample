@@ -19,6 +19,7 @@ import org.springframework.security.oauth2.provider.token.TokenStore;
 import org.springframework.security.oauth2.provider.token.store.JdbcTokenStore;
 import org.springframework.security.oauth2.provider.token.store.JwtAccessTokenConverter;
 
+import com.example04.service.CustomClientDetailsService;
 import com.example04.service.CustomUserDetailsService;
 
 @Configuration
@@ -28,32 +29,37 @@ public class OAuth2AuthorizationServer extends AuthorizationServerConfigurerAdap
 
     private final PasswordEncoder passwordEncoder;
 
-    private final AuthenticationManager authenticationManager;
+    private final AuthenticationManager defaultAuthenticationManager;
 
     private final CustomUserDetailsService customUserDetailsService;
 
-    private final DataSource dataSource;
+    private final CustomClientDetailsService customClientDetailsService;
 
-    @Value("${oauth2.client-id}")
-    private String clientId;
+    private final TokenStore tokenStore;
 
-    @Value("${oauth2.client-secret}")
-    private String clientSecret;
+    @Value("${token.signing.key}")
+    private String tokenSigningKey;
 
-    @Value("${oauth2.redirect-uri}")
-    private String redirectUri;
-
-    @Value("${oauth2.access-token-validity-seconds}")
-    private int accessTokenValiditySeconds;
-
-    @Value("${oauth2.access-token-validity-seconds}")
-    private int refreshTokenValiditySeconds;
-
-    private static final String CODE_GRANT_TYPE = "authorization_code";
-    private static final String IMPLICIT_GRANT_TYPE = "implicit";
-    private static final String PASS_GRANT_TYPE = "password";
-    private static final String REFRESH_TOKEN_GRANT_TYPE = "refresh_token";
-    private static final String CLIENT_CREDENTIALS = "client_credentials";
+//    @Value("${oauth2.client-id}")
+//    private String clientId;
+//
+//    @Value("${oauth2.client-secret}")
+//    private String clientSecret;
+//
+//    @Value("${oauth2.redirect-uri}")
+//    private String redirectUri;
+//
+//    @Value("${oauth2.access-token-validity-seconds}")
+//    private int accessTokenValiditySeconds;
+//
+//    @Value("${oauth2.access-token-validity-seconds}")
+//    private int refreshTokenValiditySeconds;
+//
+//    private static final String CODE_GRANT_TYPE = "authorization_code";
+//    private static final String IMPLICIT_GRANT_TYPE = "implicit";
+//    private static final String PASS_GRANT_TYPE = "password";
+//    private static final String REFRESH_TOKEN_GRANT_TYPE = "refresh_token";
+//    private static final String CLIENT_CREDENTIALS = "client_credentials";
 
     @Override
     public void configure(AuthorizationServerSecurityConfigurer security) throws Exception {
@@ -66,41 +72,40 @@ public class OAuth2AuthorizationServer extends AuthorizationServerConfigurerAdap
     @Override
     public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
         clients
-                //.inMemory()
-                .jdbc(dataSource)
-                .withClient(clientId)
-                .secret(passwordEncoder.encode(clientSecret))
-                .authorizedGrantTypes(PASS_GRANT_TYPE,
-                        REFRESH_TOKEN_GRANT_TYPE,
-                        IMPLICIT_GRANT_TYPE,
-                        CODE_GRANT_TYPE,
-                        CLIENT_CREDENTIALS)
-                .authorities("READ_ONLY_CLIENT")
-                .scopes("read","write")
-                .resourceIds("oauth2-resource")
-                .redirectUris(redirectUri)
-                .accessTokenValiditySeconds(accessTokenValiditySeconds)
-                .refreshTokenValiditySeconds(refreshTokenValiditySeconds);
+//                //Example with saved clients in bbdd
+                .withClientDetails(customClientDetailsService);
+//                //Example creating on the fly in memory
+//                .inMemory()
+//                //Example creating on the fly in bbdd
+//                .jdbc(dataSource)
+//                .withClient(clientId)
+//                .secret(passwordEncoder.encode(clientSecret))
+//                .authorizedGrantTypes(PASS_GRANT_TYPE,
+//                        REFRESH_TOKEN_GRANT_TYPE,
+//                        IMPLICIT_GRANT_TYPE,
+//                        CODE_GRANT_TYPE,
+//                        CLIENT_CREDENTIALS)
+//                .authorities("READ_ONLY_CLIENT")
+//                .scopes("read","write")
+//                .resourceIds("oauth2-resource")
+//                .redirectUris(redirectUri)
+//                .accessTokenValiditySeconds(accessTokenValiditySeconds)
+//                .refreshTokenValiditySeconds(refreshTokenValiditySeconds);
     }
 
     @Override
     public void configure(AuthorizationServerEndpointsConfigurer endpoints) throws Exception {
         endpoints
-                .authenticationManager(authenticationManager)
+                .authenticationManager(defaultAuthenticationManager)
                 .userDetailsService(customUserDetailsService)
-                .tokenStore(tokenStore())
+                .tokenStore(tokenStore)
                 .accessTokenConverter(accessTokenConverter());
-    }
-
-    @Bean
-    public TokenStore tokenStore() {
-        return new JdbcTokenStore(dataSource);
     }
 
     @Bean
     public AccessTokenConverter accessTokenConverter() {
         JwtAccessTokenConverter converter = new JwtAccessTokenConverter();
-        converter.setSigningKey("jovi87"); // Asi le puedo modificar la key para la firma del token
+        converter.setSigningKey(tokenSigningKey); // Asi le puedo modificar la key para la firma del token
         return converter;
     }
 }
