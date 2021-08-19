@@ -160,7 +160,13 @@ Los resourcesIds son los IDs de los recursos a los que puede acceder un client, 
 nosotros tenemos un conjunto de servicios agrupados por apis, y varias apis puede formar parte de un tenant, entonces
 los ids de estas apis vendrian a encajar conceptualmente con esto. Tambien podemos crear scopes y agruparlos a 
 nivel de api, y asi conectar que scopes tiene habilitados (Los que puede solicitarle al cliente) un cliente 
-para acceder a un determinado recurso o conjunto de recursos (api).
+para acceder a un determinado recurso o conjunto de recursos (api). Esto es un una información adicional que conseguí a
+cerca del significado del resourceId:
+
+"Spring Security OAuth2 architecture is divided into Authorization Server and Resource Server resource server. 
+We can set a resourceid for each Resource Server (a microservice instance). When the Authorization Server grants 
+authorization to a client's third-party client, you can set which Resource Server resource services the client can 
+access. If not, all resource servers have access rights."
 
 #### 3. Que pasa si, yo usuario, no acepto todos los scopes?
 Si acepto al menos uno de los scopes que me ofrece que acepte, entonces se generará el token y en el payload
